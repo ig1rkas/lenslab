@@ -53,6 +53,8 @@ class Game:
         pygame.init()
         self.screen = pygame.display.set_mode(SIZE)
         self.running = 1
+        pygame.display.set_caption("Lenses model")
+        self.clock = pygame.time.Clock()
 
         self.boxes = [
             TextInputBox("1", 40, 77, 20),  # height
@@ -66,12 +68,18 @@ class Game:
 
         self.lense1_x = 280
         self.lense1_selected = 0
+        
+        self.lense2_x = 550
+        self.lense2_selected = 0
 
         self.scale = 1
+        
+        self.update_objects()
 
     def update_objects(self):
-        self.object = pygame.rect.Rect(self.object_x, 720 / 2 - 1 - 250 * self.object_h, 3, 250 * self.object_h)
+        self.object = pygame.rect.Rect(self.object_x, 720 / 2 - 1 - METR * self.object_h, 3, METR * self.object_h)
         self.lense1 = pygame.rect.Rect(self.lense1_x, 720 / 2 - 1 - 300, 3, 600)
+        self.lense2 = pygame.rect.Rect(self.lense2_x, 720 / 2 - 1 - 300, 3, 600)
 
     def print_text(self, x, y, message, font_color=BLACK, font_size=20, font_type=ROBOTO, degree=0):
         self.font_type = pygame.font.Font(font_type, font_size)
@@ -97,6 +105,9 @@ class Game:
                         
                     if self.lense1.collidepoint(*event.pos):
                         self.lense1_selected = not self.lense1_selected
+                        
+                    if self.lense2.collidepoint(*event.pos):
+                        self.lense2_selected = not self.lense2_selected
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_BACKSPACE:
@@ -115,6 +126,7 @@ class Game:
                             tib.add_value(event.unicode)
 
     def update(self):
+        self.clock.tick(60)
         try:
             if self.boxes[0].value:
                 self.object_h = float(self.boxes[0].value)
@@ -125,10 +137,40 @@ class Game:
             self.object_h = 1
 
         if self.object_selected:
-            self.object_x = pygame.mouse.get_pos()[0]
+            self.object_x = pygame.mouse.get_pos()[0] if pygame.mouse.get_pos()[0] < self.lense1_x else self.object_x
         if self.lense1_selected:
-            self.lense1_x = pygame.mouse.get_pos()[0]
+            self.lense1_x = pygame.mouse.get_pos()[0] if self.lense2_x > pygame.mouse.get_pos()[0] > self.object_x  else self.lense1_x
+        if self.lense2_selected:
+            self.lense2_x = pygame.mouse.get_pos()[0] if pygame.mouse.get_pos()[0] > self.lense1_x else self.lense2_x
+            
+            
+        self.F1_1 = self.lense1_x - float(self.boxes[1].value) * METR
+        self.F1_2 = self.lense1_x + float(self.boxes[1].value) * METR
+        self.F2_1 = self.lense2_x - float(self.boxes[2].value) * METR
+        self.F2_2 = self.lense2_x + float(self.boxes[2].value) * METR
+        
+        first_ray_k = (self.object.y - 360) / (self.lense1.x - self.F1_2)
+        first_ray_m = self.object.y - first_ray_k * self.lense1.x
+        second_ray_k = (self.object.y - 360) / (self.object.x - self.lense1.x)
+        second_ray_m = self.object.y - second_ray_k * self.object_x
+        try:
+            self.cross_x1 = (second_ray_m - first_ray_m) / (first_ray_k - second_ray_k)
+            self.cross_y1 = first_ray_k * self.cross_x1 + first_ray_m
+        except Exception:
+            pass
+        
         self.update_objects()
+        
+    def do_arrow(self, start_pos, end_pos, y):
+        pygame.draw.line(self.screen, BLACK, (start_pos, y), (end_pos, y), 4)
+        
+        pygame.draw.line(self.screen, BLACK, (start_pos, y), (start_pos + 10, y - 10), 4)
+        pygame.draw.line(self.screen, BLACK, (start_pos, y + 1), (start_pos + 10, y + 11), 4)
+        
+        pygame.draw.line(self.screen, BLACK, (end_pos - 10, y - 10), (end_pos, y), 4)
+        pygame.draw.line(self.screen, BLACK, (end_pos - 10, y + 11), (end_pos, y + 1), 4)
+
+        
 
     def render(self):
         self.screen.fill(GRAY)
@@ -141,19 +183,61 @@ class Game:
 
         pygame.draw.line(self.screen, BLACK, (0, 720 / 2 - 1), (1280, 720 / 2 - 1), 2)
         
+        #draw system
+        #draw object
         pygame.draw.rect(self.screen, object_arrow_color := (GREEN if self.object_selected else BLACK), self.object)
         pygame.draw.line(self.screen, object_arrow_color, (self.object.x - 10, self.object.y + 10), (self.object.x, self.object.y), 4)
         pygame.draw.line(self.screen, object_arrow_color, (self.object.x + 10, self.object.y + 10), (self.object.x, self.object.y), 4)
+        for i in range(10):
+            pygame.draw.line(self.screen, BLACK, (self.object_x + 1, 360 + 20 * i), (self.object_x + 1, 360 + 20 * i + 10), 3)
         
         self.print_text(self.object.x + 20, self.object.y + self.object.height / 2, message="H")
         
+        # draw lenses
         pygame.draw.rect(self.screen, lense1_arrow_color := (GREEN if self.lense1_selected else BLACK), self.lense1)
         pygame.draw.line(self.screen, lense1_arrow_color, (self.lense1.x - 10, self.lense1.y + 10), (self.lense1.x, self.lense1.y), 4)
         pygame.draw.line(self.screen, lense1_arrow_color, (self.lense1.x + 10, self.lense1.y + 10), (self.lense1.x, self.lense1.y), 4)
         pygame.draw.line(self.screen, lense1_arrow_color, (self.lense1.x - 10, self.lense1.y + 600 - 10), (self.lense1.x, self.lense1.y + 600), 4)
         pygame.draw.line(self.screen, lense1_arrow_color, (self.lense1.x + 10, self.lense1.y + 600 - 10), (self.lense1.x, self.lense1.y + 600), 4)
         
-
+        pygame.draw.rect(self.screen, lense2_arrow_color := (GREEN if self.lense2_selected else BLACK), self.lense2)
+        pygame.draw.line(self.screen, lense2_arrow_color, (self.lense2.x - 10, self.lense2.y + 10), (self.lense2.x, self.lense2.y), 4)
+        pygame.draw.line(self.screen, lense2_arrow_color, (self.lense2.x + 10, self.lense2.y + 10), (self.lense2.x, self.lense2.y), 4)
+        pygame.draw.line(self.screen, lense2_arrow_color, (self.lense2.x - 10, self.lense2.y + 600 - 10), (self.lense2.x, self.lense2.y + 600), 4)
+        pygame.draw.line(self.screen, lense2_arrow_color, (self.lense2.x + 10, self.lense2.y + 600 - 10), (self.lense2.x, self.lense2.y + 600), 4)
+        
+        #draw len lines
+        self.do_arrow(self.object_x, self.lense1_x, 720 / 2 + 30)
+        delta = self.lense1_x - self.object_x
+        self.print_text(self.object_x + (delta) / 2 - 10 * len(str(delta)) - 10, 360 + 5, f"d1 = {round(delta / METR, 2)}м")
+        delta = self.lense2_x - self.object_x
+        self.do_arrow(self.object_x, self.lense2_x, 360 + 70)
+        self.print_text(self.object_x + (delta) / 2 - 10 * len(str(delta)) - 10, 360 + 45, f"d2 = {round(delta / METR, 2)}м")
+        
+        #draw rays and focus dots
+        #point F1
+        pygame.draw.circle(self.screen, BLACK, (self.F1_1, 360), 4)
+        self.print_text(self.F1_1, 335, "F1")
+        pygame.draw.circle(self.screen, BLACK, (self.F1_2, 360), 4)
+        self.print_text(self.F1_2, 335, "F1")
+        
+        #point F2
+        pygame.draw.circle(self.screen, BLACK, (self.F2_1, 360), 4)
+        self.print_text(self.F2_1, 335, "F2")
+        pygame.draw.circle(self.screen, BLACK, (self.F2_2, 360), 4)
+        self.print_text(self.F2_2, 335, "F2")
+        
+        
+        #rays
+        pygame.draw.line(self.screen, BLACK, (self.object_x, self.object.y), (self.lense1.x, self.object.y), 1)
+        pygame.draw.line(self.screen, BLACK, (self.lense1.x, self.object.y), (self.cross_x1, self.cross_y1), 1)
+        pygame.draw.line(self.screen, BLACK, (self.object.x, self.object.y), (self.cross_x1, self.cross_y1), 1)
+        
+        pygame.draw.line(self.screen, BLACK, (self.cross_x1, self.cross_y1), (self.cross_x1, 360), 3)
+        
+        
+        
+        
         pygame.display.flip()
 
     def run(self):
