@@ -69,7 +69,7 @@ class Game:
         self.lense1_x = 280
         self.lense1_selected = 0
         
-        self.lense2_x = 550
+        self.lense2_x = 800
         self.lense2_selected = 0
 
         self.scale = 1
@@ -143,11 +143,18 @@ class Game:
         if self.lense2_selected:
             self.lense2_x = pygame.mouse.get_pos()[0] if pygame.mouse.get_pos()[0] > self.lense1_x else self.lense2_x
             
-            
-        self.F1_1 = self.lense1_x - float(self.boxes[1].value) * METR
-        self.F1_2 = self.lense1_x + float(self.boxes[1].value) * METR
-        self.F2_1 = self.lense2_x - float(self.boxes[2].value) * METR
-        self.F2_2 = self.lense2_x + float(self.boxes[2].value) * METR
+        if self.boxes[1].value and self.boxes[1].value != "0":
+            self.F1_1 = self.lense1_x - float(self.boxes[1].value) * METR
+            self.F1_2 = self.lense1_x + float(self.boxes[1].value) * METR
+        else:
+            self.F1_1 = self.lense1_x - float(1) * METR
+            self.F1_2 = self.lense1_x + float(1) * METR
+        if self.boxes[2].value and self.boxes[2].value != "0":
+            self.F2_1 = self.lense2_x - float(self.boxes[2].value) * METR
+            self.F2_2 = self.lense2_x + float(self.boxes[2].value) * METR
+        else:
+            self.F2_1 = self.lense2_x - float(1) * METR
+            self.F2_2 = self.lense2_x + float(1) * METR
         
         first_ray_k = (self.object.y - 360) / (self.lense1.x - self.F1_2)
         first_ray_m = self.object.y - first_ray_k * self.lense1.x
@@ -156,6 +163,23 @@ class Game:
         try:
             self.cross_x1 = (second_ray_m - first_ray_m) / (first_ray_k - second_ray_k)
             self.cross_y1 = first_ray_k * self.cross_x1 + first_ray_m
+        except Exception:
+            pass
+        
+        if self.cross_x1 < self.lense2_x:
+            frk = (self.cross_y1 - 360) / (self.lense2_x - self.F2_2) 
+            frm = self.cross_y1 - frk * self.lense2_x
+            srk = (self.cross_y1 - 360) / (self.cross_x1 - self.lense2_x)
+            srm = self.cross_y1 - srk * self.cross_x1
+        else:
+            frk = (self.cross_y1 - 360) / (self.cross_x1 - self.F2_1) 
+            frm = self.cross_y1 - frk * self.cross_x1
+            srk = (self.cross_y1 - 360) / (self.cross_x1 - self.F2_1)
+            srm = self.cross_y1 - srk * self.cross_x1
+        
+        try:
+            self.cross_x2 = (srm - frm) / (frk - srk)
+            self.cross_y2 = frk * self.cross_x2 + frm
         except Exception:
             pass
         
@@ -229,14 +253,24 @@ class Game:
         
         
         #rays
+        #ray 1
         pygame.draw.line(self.screen, BLACK, (self.object_x, self.object.y), (self.lense1.x, self.object.y), 1)
         pygame.draw.line(self.screen, BLACK, (self.lense1.x, self.object.y), (self.cross_x1, self.cross_y1), 1)
         pygame.draw.line(self.screen, BLACK, (self.object.x, self.object.y), (self.cross_x1, self.cross_y1), 1)
         
         pygame.draw.line(self.screen, BLACK, (self.cross_x1, self.cross_y1), (self.cross_x1, 360), 3)
+        self.print_text(self.cross_x1 + 10, 360 + (self.cross_y1 - 360) / 2, f"h2 = {round((self.cross_y1 - 360) / 100, 2)}")
         
-        
-        
+        #ray 2
+        try:
+            pygame.draw.line(self.screen, BLACK, (self.cross_x1, self.cross_y1), (self.lense2_x, self.cross_y1), 1)
+            pygame.draw.line(self.screen, BLACK, (self.lense2_x, self.cross_y1), (self.cross_x2, self.cross_y2), 1)
+            pygame.draw.line(self.screen, BLACK, (self.cross_x1, self.cross_y1), (self.cross_x2, self.cross_y2), 1)
+            
+            pygame.draw.line(self.screen, BLACK, (self.cross_x2, self.cross_y2), (self.cross_x2, 360), 3)
+        except Exception:
+            pass
+            
         
         pygame.display.flip()
 
